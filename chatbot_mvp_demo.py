@@ -117,27 +117,17 @@ def setup():
     global new_chat_context
     new_chat_context = False
     if len(st.session_state.messages) == 0:
-        new_chat_context = True
-        
+        new_chat_context = True        
     else: 
         # Display chat messages from history on app rerun
         for message in st.session_state.messages:
             with st.chat_message(message["role"], avatar=getUserIcon(message["role"])):
                 content = message["content"]
-                if "btn_type" in message:
-                    
-                    with st.expander("**Source:** " + message['source_file'].replace("target-dir\\","")):
-                        st.markdown(F"**Extract:** {content}")
-                        
-                        if message["btn_type"] == "general":
-                            create_button(message["btn_key"],message["source_file"])
-                        if message["btn_type"] == "faq":
-                            create_faq_button(message["btn_key"])
-                else:
+                if "sources" in message:                    
                     st.markdown(content)
-                
-                
-            
+                    add_sources(message["sources"])            
+                else:
+                    st.markdown(content)            
     
 def create_button(btn_key,source_file):
     st.session_state.global_btn_key = st.session_state.global_btn_key + 1 
@@ -213,6 +203,24 @@ def get_faq_data():
     
     return s
 
+def add_sources(sources):
+    for source in sources:
+        source_message = source['text'].encode('ascii', errors='ignore').decode().replace("\\n", "")
+    
+        with st.expander("**Source:** " + source['file'].replace("target-dir\\","")):
+            st.markdown(F"**Score:** {source['score']}")
+            st.markdown(F"**Extract:** {source_message}")
+            
+            btn_key = source['id'] + '0'
+            
+            if source['file'] != 'FAQ_file':
+                create_button(btn_key,source['file'])
+                #st.session_state.messages.append({"role": "assistant", "content": source_message, "btn_type": "general", "btn_key": source['id'], "source_file": source['file'], "score": source['score']})
+                
+            else:
+                create_faq_button(btn_key)
+                #st.session_state.messages.append({"role": "assistant", "content": source_message, "btn_type": "faq", "btn_key": source['id'], "source_file": source['file'], "score": source['score']})
+                        
 
 def react_to_message():
                 
@@ -245,26 +253,11 @@ def react_to_message():
         with st.chat_message("assistant", avatar=getUserIcon("assistant")):
             st.markdown(response)
             st.session_state.chat_context.append({"role": "assistant", "content": response})
-            st.session_state.messages.append({"role": "assistant", "content": response})
+            st.session_state.messages.append({"role": "assistant", "content": response, "sources" : sources})
 
-
-            for source in sources:
-                source_message = source['text'].encode('ascii', errors='ignore').decode().replace("\\n", "")
+            add_sources(sources)
             
-                with st.expander("**Source:** " + source['file'].replace("target-dir\\","")):
-                    st.markdown(F"**Score:** {source['score']}")
-                    st.markdown(F"**Extract:** {source_message}")
-                    
-                    btn_key = source['id'] + '0'
-                    
-                    if source['file'] != 'FAQ_file':
-                        create_button(btn_key,source['file'])
-                        st.session_state.messages.append({"role": "assistant", "content": source_message, "btn_type": "general", "btn_key": source['id'], "source_file": source['file']})
-                        
-                    else:
-                        create_faq_button(btn_key)
-                        st.session_state.messages.append({"role": "assistant", "content": source_message, "btn_type": "faq", "btn_key": source['id'], "source_file": source['file']})
-                        
+            
                 
                 # source_message = F"- Source: {source['file']} \n {source['score']} \n {source['text'].encode('ascii', errors='ignore')}\n\n\n"
                 # st.markdown(source_message)
